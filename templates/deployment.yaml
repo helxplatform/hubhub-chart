@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hubhub.fullname" . }}
+  labels:
+    {{- include "hubhub.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "hubhub.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "hubhub.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "hubhub.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            - name: CONTAINERS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: containers_password
+                  name: {{ include "hubhub.fullname" . }}-secrets
+            - name: CONTAINERS_USER
+              valueFrom:
+                secretKeyRef:
+                  key: containers_user
+                  name: {{ template "hubhub.fullname" . }}-secrets
+            - name: CONTAINERS_URL
+              valueFrom:
+                secretKeyRef:
+                  key: containers_url
+                  name: {{ template "hubhub.fullname" . }}-secrets
+            - name: CONTAINERS_ORG
+              valueFrom:
+                secretKeyRef:
+                  key: containers_org
+                  name: {{ template "hubhub.fullname" . }}-secrets
+            - name: DOCKERHUB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: dockerhub_password
+                  name: {{ include "hubhub.fullname" . }}-secrets
+            - name: DOCKERHUB_USER
+              valueFrom:
+                secretKeyRef:
+                  key: dockerhub_user
+                  name: {{ template "hubhub.fullname" . }}-secrets
+            - name: DOCKERHUB_ORG
+              valueFrom:
+                secretKeyRef:
+                  key: dockerhub_org
+                  name: {{ template "hubhub.fullname" . }}-secrets
+            - name: GITHUB_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: github_access_token
+                  name: {{ template "hubhub.fullname" . }}-secrets
+            - name: GITHUB_ORG
+              valueFrom:
+                secretKeyRef:
+                  key: github_org
+                  name: {{ template "hubhub.fullname" . }}-secrets
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 9090
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /docs
+              port: 9090
+          readinessProbe:
+            httpGet:
+              path: /docs
+              port: 9090
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
